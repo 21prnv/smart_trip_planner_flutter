@@ -6,6 +6,8 @@ import 'package:stacked_services/stacked_services.dart';
 import 'package:smart_trip_planner_flutter/app/app.locator.dart';
 import 'package:smart_trip_planner_flutter/data/models/itinerary_model.dart';
 import 'package:smart_trip_planner_flutter/services/gemini_service.dart';
+import 'package:smart_trip_planner_flutter/services/storage_service.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class FollowupItinerarieView extends StackedView<FollowupItinerarieViewModel> {
   final Map<String, dynamic>? arguments;
@@ -44,7 +46,7 @@ class FollowupItinerarieView extends StackedView<FollowupItinerarieViewModel> {
                 ),
               ),
             ),
-
+            const SizedBox(height: 16),
             // Bottom Input Field
             _buildBottomInputField(viewModel),
           ],
@@ -358,6 +360,30 @@ class FollowupItinerarieView extends StackedView<FollowupItinerarieViewModel> {
                   ),
                 )),
           ],
+
+          Divider(
+            color: Colors.grey[300],
+            height: 1,
+          ),
+          const SizedBox(height: 16),
+          // Action buttons - Copy and Save Offline
+          Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              _buildActionButton(
+                icon: Icons.copy,
+                label: 'Copy',
+                onTap: () => viewModel.onCopyItinerary(),
+              ),
+              const SizedBox(width: 24),
+              if (!viewModel.isReadOnly)
+                _buildActionButton(
+                  icon: Icons.send,
+                  label: 'Save Offline',
+                  onTap: () => viewModel.onSaveOffline(),
+                ),
+            ],
+          ),
         ],
       ),
     );
@@ -414,6 +440,24 @@ class FollowupItinerarieView extends StackedView<FollowupItinerarieViewModel> {
               color: Colors.black87,
               height: 1.4,
             ),
+          ),
+          const SizedBox(height: 16),
+          // Action buttons - Copy and Save Offline
+          Row(
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              _buildActionButton(
+                icon: Icons.copy,
+                label: 'Copy',
+                onTap: () => viewModel.onCopyItinerary(),
+              ),
+              const SizedBox(width: 24),
+              _buildActionButton(
+                icon: Icons.send,
+                label: 'Save Offline',
+                onTap: () => viewModel.onSaveOffline(),
+              ),
+            ],
           ),
         ],
       ),
@@ -481,9 +525,9 @@ class FollowupItinerarieView extends StackedView<FollowupItinerarieViewModel> {
               Container(
                 width: 8,
                 height: 8,
-                decoration: const BoxDecoration(
+                child: const CircularProgressIndicator(
                   color: Color(0xFF4CAF50),
-                  shape: BoxShape.circle,
+                  strokeWidth: 2,
                 ),
               ),
               const SizedBox(width: 8),
@@ -554,23 +598,60 @@ class FollowupItinerarieView extends StackedView<FollowupItinerarieViewModel> {
   }
 
   Widget _buildBottomInputField(FollowupItinerarieViewModel viewModel) {
+    // Don't show input field in read-only mode
+    if (viewModel.isReadOnly) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(
+            top: BorderSide(color: Color(0xFFE0E0E0), width: 1),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.lock,
+              color: Colors.grey[600],
+              size: 20,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Read Only Mode',
+              style: TextStyle(
+                fontSize: 16,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFF8F9FA), // Light grey background
         border: Border(
           top: BorderSide(color: Color(0xFFE0E0E0), width: 1),
         ),
       ),
       child: Row(
         children: [
+          // Text Input Field - updated to match design
           Expanded(
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: Colors.grey[300]!),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(
+                    24), // Pill-shaped with rounded corners
+                border: Border.all(
+                  color: const Color(0xFF2E8B57), // Dark green border
+                  width: 1,
+                ),
               ),
               child: Row(
                 children: [
@@ -580,17 +661,25 @@ class FollowupItinerarieView extends StackedView<FollowupItinerarieViewModel> {
                       decoration: const InputDecoration(
                         hintText: 'Follow up to refine',
                         border: InputBorder.none,
-                        hintStyle: TextStyle(color: Colors.grey),
+                        hintStyle: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 14,
+                        ),
                       ),
-                      style: const TextStyle(fontSize: 14),
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: Colors.black,
+                      ),
                       onSubmitted: (_) => viewModel.onSendMessage(),
                     ),
                   ),
+                  const SizedBox(width: 8),
+                  // Microphone icon in dark green
                   GestureDetector(
                     onTap: viewModel.onVoiceInputTap,
                     child: const Icon(
                       Icons.mic,
-                      color: Colors.grey,
+                      color: Color(0xFF2E8B57), // Dark green color
                       size: 20,
                     ),
                   ),
@@ -599,18 +688,19 @@ class FollowupItinerarieView extends StackedView<FollowupItinerarieViewModel> {
             ),
           ),
           const SizedBox(width: 12),
+          // Send Button - circular with dark green background
           GestureDetector(
             onTap: viewModel.onSendMessage,
             child: Container(
               width: 44,
               height: 44,
               decoration: const BoxDecoration(
-                color: Color(0xFF4CAF50),
+                color: Color(0xFF2E8B57), // Dark green background
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.send,
-                color: Colors.white,
+                color: Colors.white, // White icon
                 size: 20,
               ),
             ),

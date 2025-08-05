@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'package:firebase_ai/firebase_ai.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:smart_trip_planner_flutter/data/models/itinerary_model.dart';
+import 'package:smart_trip_planner_flutter/firebase_options.dart';
 
 class GeminiService {
   GenerativeModel? _functionCallModel;
+  bool _isInitialized = false;
 
   GeminiService() {
     _initializeFirebase();
@@ -17,12 +20,15 @@ class GeminiService {
           Tool.functionDeclarations([_getValidateItineraryFunction()]),
         ],
       );
+      _isInitialized = true;
     } catch (e) {
       print('Firebase initialization error: $e');
+      _isInitialized = false;
     }
   }
 
-  // Step 1: Function that validates and processes itinerary JSON
+  bool get isReady => _isInitialized && _functionCallModel != null;
+
   Map<String, dynamic> _validateItineraryJson(
       Map<String, dynamic> itineraryData) {
     try {
@@ -56,7 +62,6 @@ class GeminiService {
     }
   }
 
-  // Step 2: Function declaration for the model
   FunctionDeclaration _getValidateItineraryFunction() {
     return FunctionDeclaration(
       'validate_itinerary_json',
@@ -109,21 +114,25 @@ class GeminiService {
     );
   }
 
-  // Step 3: Main function that receives prompt, previous itinerary, and chat history
   Stream<String> generateItineraryWithFunctionCalling(
     String userPrompt,
     Itinerary? previousItinerary,
     List<Map<String, String>> chatHistory,
   ) async* {
     try {
-      // Wait for initialization
-      while (_functionCallModel == null) {
+      int attempts = 0;
+      while (!isReady && attempts < 50) {
         await Future.delayed(Duration(milliseconds: 100));
+        attempts++;
+      }
+
+      if (!isReady) {
+        yield 'Error: AI service failed to initialize. Please check your internet connection and try again.';
+        return;
       }
 
       final chat = _functionCallModel!.startChat();
 
-      // Build context from chat history
       String context = '';
       if (previousItinerary != null) {
         context +=
@@ -155,21 +164,15 @@ Create a travel itinerary with the following structure and use the function:
 IMPORTANT: Use the validate_itinerary_json function to format your response. Do not provide any text explanations.
 ''';
 
-      // Step 4: Send message and handle function calls
       final response = await chat.sendMessage(Content.text(prompt));
 
-      // Check if response contains function call
       final responseText = response.text ?? '';
       final responseJson =
           response.candidates?.first.content.parts.first.toJson();
 
-      print('Response JSON: $responseJson');
-
-      // Try to extract function call from response
       if (responseJson != null &&
           responseJson.toString().contains('functionCall')) {
         try {
-          // Parse the function call response
           final responseMap = responseJson as Map<String, dynamic>;
           final functionCallData =
               responseMap['functionCall'] as Map<String, dynamic>?;
@@ -179,11 +182,8 @@ IMPORTANT: Use the validate_itinerary_json function to format your response. Do 
             final args = functionCallData['args'] as Map<String, dynamic>;
             final itineraryData = args['itinerary'] as Map<String, dynamic>;
 
-            // Call the validation function
             final functionResult = _validateItineraryJson(itineraryData);
 
-            // Don't send function response back to model (causing server error)
-            // Just yield the validated itinerary JSON directly
             if (functionResult['success'] == true) {
               yield json.encode(functionResult['itinerary']);
             } else {
@@ -191,16 +191,15 @@ IMPORTANT: Use the validate_itinerary_json function to format your response. Do 
             }
           }
         } catch (e) {
-          print('Function call parsing error: $e');
-          // Fallback to direct response
           if (responseText.isNotEmpty) {
             yield responseText;
           }
         }
       } else {
-        // Direct response without function calling
         if (responseText.isNotEmpty) {
           yield responseText;
+        } else {
+          yield 'Error: Empty response from AI service';
         }
       }
     } catch (e) {
@@ -208,7 +207,6 @@ IMPORTANT: Use the validate_itinerary_json function to format your response. Do 
     }
   }
 
-  // Legacy method for backward compatibility
   Stream<String> generateItinerary(String tripDescription) async* {
     yield* generateItineraryWithFunctionCalling(tripDescription, null, []);
   }

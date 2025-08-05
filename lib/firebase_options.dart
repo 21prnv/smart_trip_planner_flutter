@@ -65,5 +65,4 @@ class DefaultFirebaseOptions {
     storageBucket: 'event-planner-9e65a.firebasestorage.app',
     iosBundleId: 'com.example.smartTripPlannerFlutter',
   );
-
 }

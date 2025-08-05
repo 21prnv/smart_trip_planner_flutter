@@ -9,9 +9,17 @@ import 'dart:ui' as _i6;
 import 'package:flutter/material.dart' as _i4;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i3;
+import 'package:smart_trip_planner_flutter/data/models/chat_message.dart'
+    as _i11;
 import 'package:smart_trip_planner_flutter/data/models/itinerary_model.dart'
     as _i8;
+import 'package:smart_trip_planner_flutter/data/models/saved_conversation.dart'
+    as _i10;
 import 'package:smart_trip_planner_flutter/services/gemini_service.dart' as _i7;
+import 'package:smart_trip_planner_flutter/services/network_service.dart'
+    as _i12;
+import 'package:smart_trip_planner_flutter/services/storage_service.dart'
+    as _i9;
 import 'package:stacked_services/stacked_services.dart' as _i2;
 
 // ignore_for_file: type=lint
@@ -692,6 +700,25 @@ class MockDialogService extends _i1.Mock implements _i2.DialogService {
 /// See the documentation for Mockito's code generation for more information.
 class MockGeminiService extends _i1.Mock implements _i7.GeminiService {
   @override
+  _i5.Stream<String> generateItineraryWithFunctionCalling(
+    String? userPrompt,
+    _i8.Itinerary? previousItinerary,
+    List<Map<String, String>>? chatHistory,
+  ) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #generateItineraryWithFunctionCalling,
+          [
+            userPrompt,
+            previousItinerary,
+            chatHistory,
+          ],
+        ),
+        returnValue: _i5.Stream<String>.empty(),
+        returnValueForMissingStub: _i5.Stream<String>.empty(),
+      ) as _i5.Stream<String>);
+
+  @override
   _i5.Stream<String> generateItinerary(String? tripDescription) =>
       (super.noSuchMethod(
         Invocation.method(
@@ -703,10 +730,30 @@ class MockGeminiService extends _i1.Mock implements _i7.GeminiService {
       ) as _i5.Stream<String>);
 
   @override
+  _i5.Stream<String> generateFollowUp(
+    String? followUpQuestion,
+    String? originalPrompt,
+    _i8.Itinerary? currentItinerary,
+  ) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #generateFollowUp,
+          [
+            followUpQuestion,
+            originalPrompt,
+            currentItinerary,
+          ],
+        ),
+        returnValue: _i5.Stream<String>.empty(),
+        returnValueForMissingStub: _i5.Stream<String>.empty(),
+      ) as _i5.Stream<String>);
+
+  @override
   _i5.Stream<String> refineItinerary(
     String? followUpQuestion,
     _i8.Itinerary? currentItinerary,
     String? originalPrompt,
+    List<Map<String, String>>? chatHistory,
   ) =>
       (super.noSuchMethod(
         Invocation.method(
@@ -715,9 +762,130 @@ class MockGeminiService extends _i1.Mock implements _i7.GeminiService {
             followUpQuestion,
             currentItinerary,
             originalPrompt,
+            chatHistory,
           ],
         ),
         returnValue: _i5.Stream<String>.empty(),
         returnValueForMissingStub: _i5.Stream<String>.empty(),
       ) as _i5.Stream<String>);
 }
+
+/// A class which mocks [StorageService].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockStorageService extends _i1.Mock implements _i9.StorageService {
+  @override
+  _i5.Future<void> saveConversation({
+    required String? id,
+    required String? title,
+    required String? initialPrompt,
+    required List<Map<String, dynamic>>? chatHistory,
+    _i8.Itinerary? currentItinerary,
+  }) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #saveConversation,
+          [],
+          {
+            #id: id,
+            #title: title,
+            #initialPrompt: initialPrompt,
+            #chatHistory: chatHistory,
+            #currentItinerary: currentItinerary,
+          },
+        ),
+        returnValue: _i5.Future<void>.value(),
+        returnValueForMissingStub: _i5.Future<void>.value(),
+      ) as _i5.Future<void>);
+
+  @override
+  _i5.Future<List<_i10.SavedConversation>> getAllConversations() =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #getAllConversations,
+          [],
+        ),
+        returnValue: _i5.Future<List<_i10.SavedConversation>>.value(
+            <_i10.SavedConversation>[]),
+        returnValueForMissingStub:
+            _i5.Future<List<_i10.SavedConversation>>.value(
+                <_i10.SavedConversation>[]),
+      ) as _i5.Future<List<_i10.SavedConversation>>);
+
+  @override
+  _i5.Future<List<_i10.SavedConversation>> getRecentConversations() =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #getRecentConversations,
+          [],
+        ),
+        returnValue: _i5.Future<List<_i10.SavedConversation>>.value(
+            <_i10.SavedConversation>[]),
+        returnValueForMissingStub:
+            _i5.Future<List<_i10.SavedConversation>>.value(
+                <_i10.SavedConversation>[]),
+      ) as _i5.Future<List<_i10.SavedConversation>>);
+
+  @override
+  _i5.Future<List<_i10.SavedConversation>> searchConversations(String? query) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #searchConversations,
+          [query],
+        ),
+        returnValue: _i5.Future<List<_i10.SavedConversation>>.value(
+            <_i10.SavedConversation>[]),
+        returnValueForMissingStub:
+            _i5.Future<List<_i10.SavedConversation>>.value(
+                <_i10.SavedConversation>[]),
+      ) as _i5.Future<List<_i10.SavedConversation>>);
+
+  @override
+  _i5.Future<void> deleteConversation(String? id) => (super.noSuchMethod(
+        Invocation.method(
+          #deleteConversation,
+          [id],
+        ),
+        returnValue: _i5.Future<void>.value(),
+        returnValueForMissingStub: _i5.Future<void>.value(),
+      ) as _i5.Future<void>);
+
+  @override
+  _i5.Future<void> addMessageToConversation(
+    String? conversationId,
+    _i11.ChatMessage? message,
+  ) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #addMessageToConversation,
+          [
+            conversationId,
+            message,
+          ],
+        ),
+        returnValue: _i5.Future<void>.value(),
+        returnValueForMissingStub: _i5.Future<void>.value(),
+      ) as _i5.Future<void>);
+
+  @override
+  _i5.Future<void> updateConversationItinerary(
+    String? conversationId,
+    _i8.Itinerary? itinerary,
+  ) =>
+      (super.noSuchMethod(
+        Invocation.method(
+          #updateConversationItinerary,
+          [
+            conversationId,
+            itinerary,
+          ],
+        ),
+        returnValue: _i5.Future<void>.value(),
+        returnValueForMissingStub: _i5.Future<void>.value(),
+      ) as _i5.Future<void>);
+}
+
+/// A class which mocks [NetworkService].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockNetworkService extends _i1.Mock implements _i12.NetworkService {}

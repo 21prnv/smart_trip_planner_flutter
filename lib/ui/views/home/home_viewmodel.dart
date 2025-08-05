@@ -1,61 +1,149 @@
 import 'package:flutter/material.dart';
-import 'package:smart_trip_planner_flutter/app/app.bottomsheets.dart';
-import 'package:smart_trip_planner_flutter/app/app.dialogs.dart';
-import 'package:smart_trip_planner_flutter/app/app.locator.dart';
-import 'package:smart_trip_planner_flutter/app/app.router.dart';
-import 'package:smart_trip_planner_flutter/ui/common/app_strings.dart';
-import 'package:smart_trip_planner_flutter/ui/views/itinerary/itinerary_view.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:stacked/stacked.dart';
+import 'package:smart_trip_planner_flutter/app/app.locator.dart';
+import 'package:smart_trip_planner_flutter/data/models/chat_message.dart';
+import 'package:smart_trip_planner_flutter/data/models/saved_conversation.dart';
+import 'package:smart_trip_planner_flutter/services/storage_service.dart';
+import 'package:smart_trip_planner_flutter/services/network_service.dart';
+import 'package:smart_trip_planner_flutter/app/app.router.dart';
 import 'package:stacked_services/stacked_services.dart';
+import 'package:smart_trip_planner_flutter/ui/views/itinerary/itinerary_view.dart';
+import 'package:smart_trip_planner_flutter/ui/views/followup_itinerarie/followup_itinerarie_view.dart';
 
 class HomeViewModel extends BaseViewModel {
-  final _dialogService = locator<DialogService>();
-  final _bottomSheetService = locator<BottomSheetService>();
+  final _storageService = locator<StorageService>();
   final _navigationService = locator<NavigationService>();
+  final _networkService = NetworkService();
 
-  // User name for greeting
-  String get userName => 'Shubham';
-
-  // Text controller for trip description input
   final TextEditingController tripDescriptionController =
       TextEditingController();
 
-  // Sample saved itineraries
-  List<String> get savedItineraries => [
-        'Japan Trip, 20 days vacation, explore ky...',
-        'India Trip, 7 days work trip, suggest affor...',
-        'Europe trip, include Paris, Berlin, Dortmun...',
-        'Two days weekend getaway to somewhe...',
-      ];
+  List<SavedConversation> _savedConversations = [];
+  List<SavedConversation> get savedConversations => _savedConversations;
+
+  bool _hasNetworkConnection = true;
+  bool get hasNetworkConnection => _hasNetworkConnection;
 
   HomeViewModel() {
-    // Set initial text as shown in the design
-    tripDescriptionController.text =
-        '7 days in Bali next April, 3 people, mid-range budget, wanted to explore less populated areas, it should be a peaceful trip!';
+    _loadSavedConversations();
+    _checkNetworkConnection();
   }
 
-  void onVoiceInputTap() {
-    // Handle voice input functionality
-    _dialogService.showCustomDialog(
-      variant: DialogType.infoAlert,
-      title: 'Voice Input',
-      description: 'Voice input feature coming soon!',
-    );
+  Future<void> _checkNetworkConnection() async {
+    _hasNetworkConnection = await _networkService.hasInternetConnection();
+    notifyListeners();
   }
 
-  void onCreateItineraryTap() {
-    // Navigate to itinerary view with trip description
-    if (tripDescriptionController.text.trim().isNotEmpty) {
-      _navigationService.navigateToView(ItineraryView(
-        arguments: {'tripDescription': tripDescriptionController.text},
-      ));
-    } else {
-      _dialogService.showCustomDialog(
-        variant: DialogType.infoAlert,
-        title: 'Input Required',
-        description: 'Please describe your trip vision first.',
+  Future<void> _loadSavedConversations() async {
+    setBusy(true);
+    try {
+      _savedConversations = await _storageService.getRecentConversations();
+    } catch (e) {
+      Fluttertoast.showToast(
+        msg: "Failed to load saved conversations: ${e.toString()}",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  Future<void> refreshConversations() async {
+    await _loadSavedConversations();
+  }
+
+  void onDeleteConversation(String conversationId) async {
+    try {
+      await _storageService.deleteConversation(conversationId);
+      await _loadSavedConversations();
+    } catch (e) {
+      Fluttertoast.showToast(
+        msg: "Failed to delete conversation: ${e.toString()}",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
       );
     }
+  }
+
+  void onViewConversation(SavedConversation conversation) {
+    final chatHistory = <Map<String, dynamic>>[];
+
+    final sortedMessages = List<ChatMessage>.from(conversation.messages)
+      ..sort((a, b) => a.timestamp.compareTo(b.timestamp));
+
+    for (int i = 0; i < sortedMessages.length; i++) {
+      final message = sortedMessages[i];
+
+      if (message.role == 'user') {
+        ChatMessage? aiResponse;
+        for (int j = i + 1; j < sortedMessages.length; j++) {
+          if (sortedMessages[j].role == 'ai') {
+            aiResponse = sortedMessages[j];
+            break;
+          }
+        }
+
+        chatHistory.add({
+          'user': message.content,
+          'aiResponse': aiResponse?.itinerary ?? aiResponse?.content,
+        });
+      }
+    }
+
+    _navigationService.navigateToView(FollowupItinerarieView(
+      arguments: {
+        'tripDescription': conversation.initialPrompt,
+        'itinerary': conversation.currentItinerary,
+        'aiResponse': conversation.messages
+                .where((m) => m.role == 'ai' && m.itinerary != null)
+                .firstOrNull
+                ?.itinerary
+                ?.toJson()
+                .toString() ??
+            '',
+        'chatHistory': chatHistory,
+        'isReadOnly': true,
+        'conversationId': conversation.id,
+      },
+    ));
+  }
+
+  void onVoiceInputTap() {}
+
+  void onCreateItineraryTap() async {
+    final tripDescription = tripDescriptionController.text.trim();
+    if (tripDescription.isEmpty) {
+      Fluttertoast.showToast(
+        msg: "Please enter a trip description.",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+      );
+      return;
+    }
+
+    if (!await _networkService.hasInternetConnection()) {
+      Fluttertoast.showToast(
+        msg:
+            "No internet connection. Please check your network settings and try again.",
+        toastLength: Toast.LENGTH_LONG,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+      );
+      return;
+    }
+
+    _navigationService.navigateToView(ItineraryView(
+      arguments: {'tripDescription': tripDescription},
+    ));
   }
 
   @override

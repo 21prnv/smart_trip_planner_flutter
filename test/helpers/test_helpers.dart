@@ -3,6 +3,8 @@ import 'package:mockito/mockito.dart';
 import 'package:smart_trip_planner_flutter/app/app.locator.dart';
 import 'package:stacked_services/stacked_services.dart';
 import 'package:smart_trip_planner_flutter/services/gemini_service.dart';
+import 'package:smart_trip_planner_flutter/services/storage_service.dart';
+import 'package:smart_trip_planner_flutter/services/network_service.dart';
 // @stacked-import
 
 import 'test_helpers.mocks.dart';
@@ -14,6 +16,8 @@ import 'test_helpers.mocks.dart';
     MockSpec<BottomSheetService>(onMissingStub: OnMissingStub.returnDefault),
     MockSpec<DialogService>(onMissingStub: OnMissingStub.returnDefault),
     MockSpec<GeminiService>(onMissingStub: OnMissingStub.returnDefault),
+    MockSpec<StorageService>(onMissingStub: OnMissingStub.returnDefault),
+    MockSpec<NetworkService>(onMissingStub: OnMissingStub.returnDefault),
 // @stacked-mock-spec
   ],
 )
@@ -22,6 +26,8 @@ void registerServices() {
   getAndRegisterBottomSheetService();
   getAndRegisterDialogService();
   getAndRegisterGeminiService();
+  getAndRegisterStorageService();
+  getAndRegisterNetworkService();
 // @stacked-mock-register
 }
 
@@ -83,6 +89,20 @@ MockGeminiService getAndRegisterGeminiService() {
   _removeRegistrationIfExists<GeminiService>();
   final service = MockGeminiService();
   locator.registerSingleton<GeminiService>(service);
+  return service;
+}
+
+MockStorageService getAndRegisterStorageService() {
+  _removeRegistrationIfExists<StorageService>();
+  final service = MockStorageService();
+  locator.registerSingleton<StorageService>(service);
+  return service;
+}
+
+MockNetworkService getAndRegisterNetworkService() {
+  _removeRegistrationIfExists<NetworkService>();
+  final service = MockNetworkService();
+  locator.registerSingleton<NetworkService>(service);
   return service;
 }
 // @stacked-mock-create

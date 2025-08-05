@@ -19,10 +19,6 @@ class StartupView extends StackedView<StartupViewModel> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(
-              'STACKED',
-              style: TextStyle(fontSize: 40, fontWeight: FontWeight.w900),
-            ),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -32,7 +28,7 @@ class StartupView extends StackedView<StartupViewModel> {
                   width: 16,
                   height: 16,
                   child: CircularProgressIndicator(
-                    color: Colors.black,
+                    color: Colors.green,
                     strokeWidth: 6,
                   ),
                 ),

@@ -1,9 +1,20 @@
 import 'dart:convert';
+import 'package:hive/hive.dart';
 
+part 'itinerary_model.g.dart';
+
+@HiveType(typeId: 2)
 class Itinerary {
+  @HiveField(0)
   final String title;
+
+  @HiveField(1)
   final String startDate;
+
+  @HiveField(2)
   final String endDate;
+
+  @HiveField(3)
   final List<Day> days;
 
   Itinerary({
@@ -34,9 +45,15 @@ class Itinerary {
   }
 }
 
+@HiveType(typeId: 3)
 class Day {
+  @HiveField(0)
   final String date;
+
+  @HiveField(1)
   final String summary;
+
+  @HiveField(2)
   final List<ActivityItem> items;
 
   Day({
@@ -65,9 +82,15 @@ class Day {
   }
 }
 
+@HiveType(typeId: 4)
 class ActivityItem {
+  @HiveField(0)
   final String time;
+
+  @HiveField(1)
   final String activity;
+
+  @HiveField(2)
   final String location;
 
   ActivityItem({

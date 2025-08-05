@@ -6,6 +6,8 @@ import 'package:stacked/stacked_annotations.dart';
 import 'package:stacked_services/stacked_services.dart';
 import 'package:smart_trip_planner_flutter/ui/views/followup_itinerarie/followup_itinerarie_view.dart';
 import 'package:smart_trip_planner_flutter/services/gemini_service.dart';
+import 'package:smart_trip_planner_flutter/services/storage_service.dart';
+import 'package:smart_trip_planner_flutter/services/network_service.dart';
 // @stacked-import
 
 @StackedApp(
@@ -20,6 +22,8 @@ import 'package:smart_trip_planner_flutter/services/gemini_service.dart';
     LazySingleton(classType: DialogService),
     LazySingleton(classType: NavigationService),
     LazySingleton(classType: GeminiService),
+    LazySingleton(classType: StorageService),
+    LazySingleton(classType: NetworkService),
 // @stacked-service
   ],
   bottomsheets: [

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:smart_trip_planner_flutter/app/app.router.dart';
 import 'package:smart_trip_planner_flutter/ui/views/followup_itinerarie/followup_itinerarie_view.dart';
 import 'package:smart_trip_planner_flutter/services/gemini_service.dart';
@@ -8,11 +9,14 @@ import 'package:stacked/stacked.dart';
 import 'package:stacked_services/stacked_services.dart';
 import 'package:smart_trip_planner_flutter/app/app.locator.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:smart_trip_planner_flutter/services/storage_service.dart';
+import 'package:smart_trip_planner_flutter/services/itinerary_processor.dart';
 
 class ItineraryViewModel extends BaseViewModel {
   final _navigationService = locator<NavigationService>();
   final _dialogService = locator<DialogService>();
   final _geminiService = locator<GeminiService>();
+  final _storageService = locator<StorageService>();
 
   final Map<String, dynamic>? arguments;
 
@@ -29,52 +33,70 @@ class ItineraryViewModel extends BaseViewModel {
   String _generatedContent = '';
   String get generatedContent => _generatedContent;
 
+  // For streaming display
+  String _streamingText = '';
+  String get streamingText => _streamingText;
+
   Itinerary? _itinerary;
   Itinerary? get itinerary => _itinerary;
 
   String get tripDescription => arguments?['tripDescription'] ?? '';
 
   void _startLoadingProcess() async {
-    // Simulate initial loading time (1 second)
     await Future.delayed(const Duration(seconds: 1));
     _isLoading = false;
     _isGenerating = true;
     notifyListeners();
 
-    // Start generating itinerary with Gemini
-    await _generateItinerary();
+    await _generateItineraryWithIsolate();
   }
 
-  Future<void> _generateItinerary() async {
+  Future<void> _generateItineraryWithIsolate() async {
     try {
-      String fullResponse = '';
-
-      await for (String chunk
-          in _geminiService.generateItinerary(tripDescription)) {
-        fullResponse += chunk;
-        _generatedContent = fullResponse;
+      if (!_geminiService.isReady) {
+        _isGenerating = false;
+        _generatedContent =
+            'Error: AI service is not ready. Please check your internet connection and try again.';
+        _streamingText = _generatedContent;
         notifyListeners();
 
-        // Try to parse as JSON after each chunk
+        Fluttertoast.showToast(
+          msg: "AI service not available. Please try again.",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+        );
+        return;
+      }
+
+      String fullResponse = '';
+      _streamingText = '';
+
+      await for (String chunk
+          in _geminiService.generateItineraryWithFunctionCalling(
+        tripDescription,
+        null,
+        [],
+      )) {
+        fullResponse += chunk;
+        _generatedContent = fullResponse;
+
+        _streamingText = fullResponse;
+        notifyListeners();
+
         try {
-          // Clean the response first
           String cleanedResponse = _cleanJsonResponse(fullResponse);
-          print('Cleaned response: $cleanedResponse'); // Debug print
 
           final jsonData = json.decode(cleanedResponse);
-          print('Parsed JSON: $jsonData'); // Debug print
 
           _itinerary = Itinerary.fromJson(jsonData);
           _isGenerating = false;
           notifyListeners();
-          break;
-        } catch (e) {
-          print('JSON parsing error: $e'); // Debug print
-          // Continue streaming if not valid JSON yet
-        }
+          return;
+        } catch (e) {}
       }
 
-      // If we reach here without valid JSON, show the raw response
       if (_itinerary == null) {
         _isGenerating = false;
         notifyListeners();
@@ -82,20 +104,67 @@ class ItineraryViewModel extends BaseViewModel {
     } catch (e) {
       _isGenerating = false;
       _generatedContent = 'Error generating itinerary: ${e.toString()}';
+      _streamingText = _generatedContent;
       notifyListeners();
 
-      _dialogService.showCustomDialog(
-        title: 'Error',
-        description: 'Failed to generate itinerary. Please try again.',
+      Fluttertoast.showToast(
+        msg: "Failed to generate itinerary. Please try again.",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+      );
+    }
+  }
+
+  Future<void> _generateItinerary() async {
+    try {
+      String fullResponse = '';
+      _streamingText = '';
+
+      await for (String chunk
+          in _geminiService.generateItinerary(tripDescription)) {
+        fullResponse += chunk;
+        _generatedContent = fullResponse;
+
+        _streamingText = fullResponse;
+        notifyListeners();
+
+        try {
+          String cleanedResponse = _cleanJsonResponse(fullResponse);
+
+          final jsonData = json.decode(cleanedResponse);
+
+          _itinerary = Itinerary.fromJson(jsonData);
+          _isGenerating = false;
+          notifyListeners();
+          break;
+        } catch (e) {}
+      }
+
+      if (_itinerary == null) {
+        _isGenerating = false;
+        notifyListeners();
+      }
+    } catch (e) {
+      _isGenerating = false;
+      _generatedContent = 'Error generating itinerary: ${e.toString()}';
+      _streamingText = _generatedContent;
+      notifyListeners();
+
+      Fluttertoast.showToast(
+        msg: "Failed to generate itinerary. Please try again.",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
       );
     }
   }
 
   String _cleanJsonResponse(String response) {
-    // Remove markdown code blocks
     String cleaned = response.trim();
 
-    // Remove ```json and ``` if present
     if (cleaned.startsWith('```json')) {
       cleaned = cleaned.substring(7);
     } else if (cleaned.startsWith('```')) {
@@ -108,39 +177,30 @@ class ItineraryViewModel extends BaseViewModel {
 
     cleaned = cleaned.trim();
 
-    // Fix common JSON issues
     cleaned = _fixJsonIssues(cleaned);
 
     return cleaned;
   }
 
   String _fixJsonIssues(String json) {
-    // Fix missing commas between objects in arrays
     json = json.replaceAll(RegExp(r'}\s*{'), '},{');
 
-    // Fix missing commas after closing braces in arrays
     json = json.replaceAll(RegExp(r']\s*{'), '],{');
 
-    // Fix missing commas after closing braces
     json = json.replaceAll(RegExp(r'}\s*"'), '},"');
 
-    // Fix missing commas between array items
     json = json.replaceAll(RegExp(r'}\s*\n\s*{'), '},{');
     json = json.replaceAll(RegExp(r'}\s*\n\s*"'), '},"');
 
-    // Fix missing commas between properties
     json = json.replaceAll(RegExp(r'"\s*\n\s*"'), '",\n  "');
     json = json.replaceAll(RegExp(r'"\s*"'), '",\n  "');
 
-    // Fix missing commas between array items with newlines
     json = json.replaceAll(RegExp(r'}\s*\n\s*}\s*\n\s*{'), '}},\n    {');
     json = json.replaceAll(RegExp(r'}\s*\n\s*}\s*\n\s*"'), '}},\n    "');
 
-    // Fix the specific pattern: } followed by newline and }
     json = json.replaceAll(RegExp(r'}\s*\n\s*}\s*\n\s*{'), '}},\n    {');
     json = json.replaceAll(RegExp(r'}\s*\n\s*}\s*\n\s*"'), '}},\n    "');
 
-    // Fix missing commas between days array items
     json =
         json.replaceAll(RegExp(r'}\s*\n\s*}\s*\n\s*}\s*\n\s*{'), '}}},\n    {');
     json =
@@ -162,37 +222,57 @@ class ItineraryViewModel extends BaseViewModel {
             arguments: {
               'tripDescription': tripDescription,
               'itinerary': _itinerary,
-              'aiResponse': _generatedContent, // Pass the full AI response
+              'aiResponse': _generatedContent,
             },
           ),
         ),
       );
     } else {
-      _dialogService.showCustomDialog(
-        title: 'Error',
-        description: 'Please wait for the itinerary to be generated.',
+      Fluttertoast.showToast(
+        msg: "Please wait for the itinerary to be generated.",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
       );
     }
   }
 
-  void onSaveOfflineTap() {
+  void onSaveOfflineTap() async {
     if (_itinerary != null) {
-      _dialogService.showCustomDialog(
-        title: 'Saved Offline',
-        description: 'Your itinerary has been saved for offline access.',
-      );
+      try {
+        final conversationId = DateTime.now().millisecondsSinceEpoch.toString();
+        final title = _itinerary!.title;
+
+        final chatHistory = [
+          {
+            'user': tripDescription,
+            'aiResponse': _itinerary,
+          }
+        ];
+
+        await _storageService.saveConversation(
+          id: conversationId,
+          title: title,
+          initialPrompt: tripDescription,
+          chatHistory: chatHistory,
+          currentItinerary: _itinerary,
+        );
+      } catch (e) {}
     } else {
-      _dialogService.showCustomDialog(
-        title: 'Error',
-        description: 'No itinerary to save.',
+      Fluttertoast.showToast(
+        msg: "No itinerary to save.",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
       );
     }
   }
 
   Future<void> onOpenMapsTap() async {
     try {
-      // Get the first location from the itinerary
-      String coordinates = "-8.3405,115.0917"; // Default coordinates
+      String coordinates = "-8.3405,115.0917";
 
       if (_itinerary != null &&
           _itinerary!.days.isNotEmpty &&
@@ -206,15 +286,21 @@ class ItineraryViewModel extends BaseViewModel {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        _dialogService.showCustomDialog(
-          title: 'Error',
-          description: 'Could not open Google Maps.',
+        Fluttertoast.showToast(
+          msg: "Could not open Google Maps.",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
         );
       }
     } catch (e) {
-      _dialogService.showCustomDialog(
-        title: 'Error',
-        description: 'Failed to open maps: ${e.toString()}',
+      Fluttertoast.showToast(
+        msg: "Failed to open maps: ${e.toString()}",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
       );
     }
   }
@@ -227,15 +313,21 @@ class ItineraryViewModel extends BaseViewModel {
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);
       } else {
-        _dialogService.showCustomDialog(
-          title: 'Error',
-          description: 'Could not open Google Maps.',
+        Fluttertoast.showToast(
+          msg: "Could not open Google Maps.",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
         );
       }
     } catch (e) {
-      _dialogService.showCustomDialog(
-        title: 'Error',
-        description: 'Failed to open maps: ${e.toString()}',
+      Fluttertoast.showToast(
+        msg: "Failed to open maps: ${e.toString()}",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
       );
     }
   }

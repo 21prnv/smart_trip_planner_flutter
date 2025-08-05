@@ -6,6 +6,7 @@ import 'dart:convert';
 import 'package:smart_trip_planner_flutter/services/gemini_service.dart';
 import 'package:smart_trip_planner_flutter/data/models/itinerary_model.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:smart_trip_planner_flutter/services/storage_service.dart';
 
 import 'itinerary_viewmodel.dart';
 
@@ -73,9 +74,9 @@ class ItineraryView extends StackedView<ItineraryViewModel> {
               // Title Section
               Center(
                 child: Text(
-                  viewModel.isLoading
+                  viewModel.isLoading || viewModel.isGenerating
                       ? 'Creating Itinerary...'
-                      : 'Itinerary Created �',
+                      : 'Itinerary Created',
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
@@ -95,7 +96,7 @@ class ItineraryView extends StackedView<ItineraryViewModel> {
 
               const SizedBox(height: 20),
 
-              // Action Buttons
+              // Action Buttons - Updated to match the design
               _buildActionButtons(viewModel, context),
 
               const SizedBox(height: 20), // Extra padding at bottom
@@ -112,34 +113,38 @@ class ItineraryView extends StackedView<ItineraryViewModel> {
       padding: const EdgeInsets.all(40),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius:
+            BorderRadius.circular(16), // Significantly rounded corners
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+            spreadRadius: 0,
           ),
         ],
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          // Circular loading spinner with dark teal color
           const SizedBox(
             width: 60,
             height: 60,
             child: CircularProgressIndicator(
               strokeWidth: 3,
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                  Color(0xFF2E8B57)), // Dark teal color
             ),
           ),
           const SizedBox(height: 20),
-          Text(
-            viewModel.isLoading
-                ? 'Itinerary Created �'
-                : 'Generating itinerary...',
+          // Loading text
+          const Text(
+            'Curating a perfect plan for you...',
             style: TextStyle(
               fontSize: 16,
               color: Colors.black,
+              fontWeight: FontWeight.normal,
             ),
             textAlign: TextAlign.center,
           ),
@@ -322,13 +327,45 @@ class ItineraryView extends StackedView<ItineraryViewModel> {
 
     return Column(
       children: [
-        SizedBox(
+        // "Follow up to refine" Button - updated to match design
+        Container(
           width: double.infinity,
-          height: 50,
+          height: 56,
+          decoration: isDisabled
+              ? BoxDecoration(
+                  borderRadius:
+                      BorderRadius.circular(15), // More rounded for pill shape
+                  color: Colors.green[200],
+                )
+              : BoxDecoration(
+                  borderRadius:
+                      BorderRadius.circular(15), // More rounded for pill shape
+                  gradient: const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(
+                          0xFF2E8B57), // Dark teal/deep green (lighter at top)
+                      Color(0xFF1B5E20), // Darker teal/green (darker at bottom)
+                    ],
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.2),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                      spreadRadius: 0,
+                    ),
+                  ],
+                ),
           child: ElevatedButton.icon(
             onPressed:
                 isDisabled ? null : () => viewModel.onFollowUpTap(context),
-            icon: const Icon(Icons.chat_bubble_outline, color: Colors.white),
+            icon: const Icon(
+              Icons.chat_bubble_outline,
+              color: Colors.white,
+              size: 20,
+            ),
             label: const Text(
               'Follow up to refine',
               style: TextStyle(
@@ -338,41 +375,52 @@ class ItineraryView extends StackedView<ItineraryViewModel> {
               ),
             ),
             style: ElevatedButton.styleFrom(
-              backgroundColor: isDisabled
-                  ? const Color(0xFFBDBDBD)
-                  : const Color(0xFF4CAF50),
+              backgroundColor: Colors.transparent,
+              foregroundColor: Colors.white,
+              shadowColor: Colors.transparent,
               shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(28),
               ),
-              elevation: isDisabled ? 0 : 2,
+              elevation: 0,
             ),
           ),
         ),
-        const SizedBox(height: 12),
-        SizedBox(
+
+        const SizedBox(height: 16),
+
+        // "Save Offline" Button - updated to match design
+        Container(
           width: double.infinity,
-          height: 50,
-          child: OutlinedButton.icon(
+          height: 48, // Slightly smaller height
+          decoration: null,
+          child: ElevatedButton.icon(
             onPressed: isDisabled ? null : viewModel.onSaveOfflineTap,
-            icon: Icon(
+            icon: const Icon(
               Icons.download,
-              color: isDisabled ? Colors.grey : Colors.grey[700],
+              color: Colors.black87,
+              size: 20,
             ),
-            label: Text(
+            label: const Text(
               'Save Offline',
               style: TextStyle(
-                color: isDisabled ? Colors.grey : Colors.grey[700],
+                color: Colors.black87,
                 fontSize: 16,
+                fontWeight: FontWeight.w500,
               ),
             ),
-            style: OutlinedButton.styleFrom(
-              side: BorderSide(
-                color: isDisabled ? Colors.grey[300]! : Colors.grey[400]!,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-            ),
+            style: isDisabled
+                ? ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                  )
+                : ElevatedButton.styleFrom(
+                    backgroundColor: Colors.transparent,
+                    foregroundColor: Colors.black87,
+                    shadowColor: Colors.transparent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    elevation: 0,
+                  ),
           ),
         ),
       ],
