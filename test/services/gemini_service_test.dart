@@ -1,0 +1,11 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:smart_trip_planner_flutter/app/app.locator.dart';
+
+import '../helpers/test_helpers.dart';
+
+void main() {
+  group('GeminiServiceTest -', () {
+    setUp(() => registerServices());
+    tearDown(() => locator.reset());
+  });
+}
