@@ -22,13 +22,12 @@ class ItineraryView extends StackedView<ItineraryViewModel> {
     Widget? child,
   ) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA), // Light off-white background
+      backgroundColor: const Color(0xFFF8F9FA),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 20.0),
           child: Column(
             children: [
-              // Header Section
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -68,10 +67,7 @@ class ItineraryView extends StackedView<ItineraryViewModel> {
                   ),
                 ],
               ),
-
               const SizedBox(height: 20),
-
-              // Title Section
               Center(
                 child: Text(
                   viewModel.isLoading || viewModel.isGenerating
@@ -84,22 +80,15 @@ class ItineraryView extends StackedView<ItineraryViewModel> {
                   ),
                 ),
               ),
-
               const SizedBox(height: 30),
-
-              // Main Content Area
               Expanded(
                 child: viewModel.isLoading || viewModel.isGenerating
                     ? _buildLoadingCard(viewModel)
                     : _buildItineraryCard(viewModel),
               ),
-
               const SizedBox(height: 20),
-
-              // Action Buttons - Updated to match the design
               _buildActionButtons(viewModel, context),
-
-              const SizedBox(height: 20), // Extra padding at bottom
+              const SizedBox(height: 20),
             ],
           ),
         ),
@@ -113,8 +102,7 @@ class ItineraryView extends StackedView<ItineraryViewModel> {
       padding: const EdgeInsets.all(40),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius:
-            BorderRadius.circular(16), // Significantly rounded corners
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.08),
@@ -127,18 +115,15 @@ class ItineraryView extends StackedView<ItineraryViewModel> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Circular loading spinner with dark teal color
           const SizedBox(
             width: 60,
             height: 60,
             child: CircularProgressIndicator(
               strokeWidth: 3,
-              valueColor: AlwaysStoppedAnimation<Color>(
-                  Color(0xFF2E8B57)), // Dark teal color
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2E8B57)),
             ),
           ),
           const SizedBox(height: 20),
-          // Loading text
           const Text(
             'Curating a perfect plan for you...',
             style: TextStyle(
@@ -213,8 +198,8 @@ class ItineraryView extends StackedView<ItineraryViewModel> {
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: const Color(0xFF2196F3), width: 1),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: ListView(
+        shrinkWrap: true,
         children: [
           Text(
             itinerary.title,
@@ -279,14 +264,12 @@ class ItineraryView extends StackedView<ItineraryViewModel> {
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    // Red pushpin icon
                                     Icon(
                                       Icons.location_on,
                                       color: Colors.red,
                                       size: 16,
                                     ),
                                     const SizedBox(width: 8),
-                                    // Blue underlined text
                                     Text(
                                       'Open in maps',
                                       style: TextStyle(
@@ -297,7 +280,6 @@ class ItineraryView extends StackedView<ItineraryViewModel> {
                                       ),
                                     ),
                                     const SizedBox(width: 8),
-                                    // External link icon
                                     Icon(
                                       Icons.open_in_new,
                                       color: Colors.blue[600],
@@ -327,26 +309,22 @@ class ItineraryView extends StackedView<ItineraryViewModel> {
 
     return Column(
       children: [
-        // "Follow up to refine" Button - updated to match design
         Container(
           width: double.infinity,
           height: 56,
           decoration: isDisabled
               ? BoxDecoration(
-                  borderRadius:
-                      BorderRadius.circular(15), // More rounded for pill shape
+                  borderRadius: BorderRadius.circular(15),
                   color: Colors.green[200],
                 )
               : BoxDecoration(
-                  borderRadius:
-                      BorderRadius.circular(15), // More rounded for pill shape
+                  borderRadius: BorderRadius.circular(15),
                   gradient: const LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Color(
-                          0xFF2E8B57), // Dark teal/deep green (lighter at top)
-                      Color(0xFF1B5E20), // Darker teal/green (darker at bottom)
+                      Color(0xFF2E8B57),
+                      Color(0xFF1B5E20),
                     ],
                   ),
                   boxShadow: [
@@ -385,13 +363,10 @@ class ItineraryView extends StackedView<ItineraryViewModel> {
             ),
           ),
         ),
-
         const SizedBox(height: 16),
-
-        // "Save Offline" Button - updated to match design
         Container(
           width: double.infinity,
-          height: 48, // Slightly smaller height
+          height: 48,
           decoration: null,
           child: ElevatedButton.icon(
             onPressed: isDisabled ? null : viewModel.onSaveOfflineTap,
