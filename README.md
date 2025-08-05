@@ -86,6 +86,7 @@ An intelligent travel planning app powered by Google Gemini AI that creates pers
 
 ## 📊 Architecture
 
+<img width="731" height="646" alt="image" src="https://github.com/user-attachments/assets/2d4365c5-05d5-473e-a4e3-be75e58e06a0" />
 
 
 ### Key Components
